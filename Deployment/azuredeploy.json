@@ -56,10 +56,11 @@
     "hostingPlanSku": {
       "type": "string",
       "allowedValues": [
+		"Basic",
         "Standard",
         "Premium"
       ],
-      "defaultValue": "Standard",
+      "defaultValue": "Basic",
       "metadata": {
         "description": "The pricing tier for the hosting plan."
       }
@@ -67,10 +68,11 @@
     "hostingPlanSize": {
       "type": "string",
       "allowedValues": [
+		"1",
         "2",
         "3"
       ],
-      "defaultValue": "2",
+      "defaultValue": "1",
       "metadata": {
         "description": "The size of the hosting plan (small, medium, or large)."
       }
