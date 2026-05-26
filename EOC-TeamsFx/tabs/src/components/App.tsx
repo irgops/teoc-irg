@@ -2,6 +2,7 @@ import { Loader, Provider, ThemeInput, teamsTheme } from "@fluentui/react-norths
 import { PublicClientApplication, Configuration } from "@azure/msal-browser";
 import * as microsoftTeams from "@microsoft/teams-js";
 import { useState, useEffect } from "react";
+import { unstable_batchedUpdates } from "react-dom";
 import { Redirect, Route, HashRouter as Router } from "react-router-dom";
 import { TeamsFxContext } from "./Context";
 import Tab from "./Tab";
@@ -32,8 +33,8 @@ export default function App() {
       const msal = new PublicClientApplication(config);
       await msal.initialize();
 
-      // Establish the active account before EOCHome's acquireTokenSilent runs.
-      // ssoSilent routes through the Teams NAA broker — no popup, no redirect.
+      // Set the active account before the instance reaches context so that
+      // EOCHome's acquireTokenSilent never runs against an account-less instance.
       try {
         const result = await msal.ssoSilent({
           loginHint: ctx.user?.userPrincipalName,
@@ -48,8 +49,16 @@ export default function App() {
         }
       }
 
-      setMsalInstance(msal);
-      setLoading(false);
+      // React 16 does not auto-batch state updates in async callbacks — each
+      // setter would fire its own render cycle. Without batching, there is a
+      // render where msalInstance is set in context but loading is still true,
+      // which can race with consumers. unstable_batchedUpdates collapses both
+      // updates into one render so the instance only reaches context the same
+      // frame that loading becomes false and EOCHome mounts.
+      unstable_batchedUpdates(() => {
+        setMsalInstance(msal);
+        setLoading(false);
+      });
     }
 
     init().catch((err) => {
@@ -66,7 +75,9 @@ export default function App() {
             <Redirect to="/tab" />
           </Route>
           {loading ? (
-            <Loader style={{ margin: 100 }} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+              <Loader size="largest" label="Signing you in..." />
+            </div>
           ) : (
             <>
               <Route exact path="/tab" component={Tab} />

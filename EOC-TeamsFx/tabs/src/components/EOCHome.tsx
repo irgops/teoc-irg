@@ -302,6 +302,15 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
             // get the tenant name
             const rootSite = await this.dataService.getTenantDetails(graphConfig.rootSiteGraphEndpoint, this.state.graph);
 
+            if (!rootSite?.siteCollection?.hostname) {
+                console.error(
+                    constants.errorLogPrefix + "_EOCHome_GetTenantAndSiteDetails — rootSite.siteCollection missing or null",
+                    rootSite
+                );
+                this.dataService.trackException(appInsights, new Error("rootSite.siteCollection missing"), constants.componentNames.EOCHomeComponent, 'GetTenantAndSiteDetails', this.state.userPrincipalName);
+                return;
+            }
+
             const tenantName = rootSite.siteCollection.hostname;
 
             const graphContextURL = rootSite["@odata.context"].split("$")[0];
@@ -311,6 +320,15 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
 
             // get SharePoint site Id
             const siteDetails = await this.dataService.getGraphData(urlForSiteId, this.state.graph);
+
+            if (!siteDetails?.id) {
+                console.error(
+                    constants.errorLogPrefix + "_EOCHome_GetTenantAndSiteDetails — siteDetails.id missing or null",
+                    siteDetails
+                );
+                this.dataService.trackException(appInsights, new Error("siteDetails.id missing"), constants.componentNames.EOCHomeComponent, 'GetTenantAndSiteDetails', this.state.userPrincipalName);
+                return;
+            }
 
             this.setState({
                 tenantName: tenantName,
@@ -361,10 +379,20 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
             const configDataRecords = [constants.enableRoles, constants.azureMapsKey, constants.appTitleKey,  constants.editIncidentAccessRoleKey];
             const configData = await this.dataService.getConfigData(graphEndpoint, this.state.graph, configDataRecords);
             await this.checkUserRoleIsAdmin();
+
+            if (!Array.isArray(configData)) {
+                console.error(
+                    constants.errorLogPrefix + `${constants.componentNames.EOCHomeComponent}_getConfigSetting — configData is not an array`,
+                    configData
+                );
+                this.setState({ settingsLoader: false });
+                return;
+            }
+
             const appTitleItem = configData.filter((item: any) => item.title === constants.appTitleKey);
             const azureMapItem = configData.filter((item: any) => item.title === constants.azureMapsKey);
             const editIncidentAccessRole = configData.filter((item: any) => item.title === constants.editIncidentAccessRoleKey);
-            
+
             if (appTitleItem.length > 0) {
                 this.setState({
                     appTitle: appTitleItem[0].value,
@@ -384,11 +412,13 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                 });
             }
 
-            this.setState({
-                isRolesEnabled: configData[0].value === "True",
-                configRoleData: configData[0],
-                settingsLoader: false
-            });
+            if (configData[0]) {
+                this.setState({
+                    isRolesEnabled: configData[0].value === "True",
+                    configRoleData: configData[0],
+                });
+            }
+            this.setState({ settingsLoader: false });
         }
         catch (error: any) {
             console.error(
