@@ -4643,7 +4643,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             appInsights={this.props.appInsights}
                                                             userPrincipalName={this.props.userPrincipalName}
                                                             graphBaseUrl={this.props.graphBaseUrl}
-                                                            teamsUserCredential={value.teamsUserCredential!}
+                                                            msalInstance={value.msalInstance!}
                                                         />
                                                     }
                                                 </TeamsFxContext.Consumer>

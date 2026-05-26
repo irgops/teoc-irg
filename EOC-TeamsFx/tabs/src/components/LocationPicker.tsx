@@ -259,9 +259,11 @@ export class LocationPicker extends React.Component<ILocationPickerProps, ILocat
     //method to get bearer token for location picker API
     private async getOutlookToken(): Promise<void> {
         try {
-            const credential = this.props.teamsUserCredential;
-            const token = await credential.getToken(this.props.graphBaseUrl !== constants.defaultGraphBaseURL ? constants.defaultOutlookBaseURLGCCH : constants.defaultOutlookBaseURL);
-            this._token = token?.token;
+            const scope = this.props.graphBaseUrl !== constants.defaultGraphBaseURL
+                ? constants.defaultOutlookBaseURLGCCH
+                : constants.defaultOutlookBaseURL;
+            const response = await this.props.msalInstance.acquireTokenSilent({ scopes: [scope] });
+            this._token = response.accessToken;
         } catch (error) {
             console.error(
                 constants.errorLogPrefix + "LocationPicker_getOutlookToken \n",
