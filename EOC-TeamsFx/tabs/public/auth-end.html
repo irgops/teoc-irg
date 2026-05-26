@@ -1,22 +1,18 @@
 <!--This file is used during the Teams authentication flow to assist with retrieval of the access token.-->
-<!--If you're not familiar with this, do not alter or remove this file from your project.-->
 <html>
   <head>
     <title>Login End Page</title>
     <meta charset="utf-8" />
   </head>
-
   <body>
-    <script
-      src="https://res.cdn.office.net/teams-js/2.21.0/js/MicrosoftTeams.min.js"
-    ></script>
+    <script src="https://res.cdn.office.net/teams-js/2.21.0/js/MicrosoftTeams.min.js"></script>
     <script type="text/javascript" src="https://alcdn.msauth.net/browser/2.21.0/js/msal-browser.min.js"></script>
     <script type="text/javascript">
-      var currentURL = new URL(window.location);
-      var clientId = currentURL.searchParams.get("clientId");
-
       microsoftTeams.app.initialize().then(() => {
         microsoftTeams.app.getContext().then(async (context) => {
+          var currentURL = new URL(window.location);
+          var clientId = currentURL.searchParams.get("clientId");
+
           const msalConfig = {
             auth: {
               clientId: clientId,
@@ -24,27 +20,34 @@
               navigateToLoginRequestUrl: false,
             },
             cache: {
-              cacheLocation: "sessionStorage",
+              cacheLocation: "localStorage",
             },
           };
 
           const msalInstance = new window.msal.PublicClientApplication(msalConfig);
-          msalInstance
-            .handleRedirectPromise()
-            .then((tokenResponse) => {
-              if (tokenResponse !== null) {
-                microsoftTeams.authentication.notifySuccess(
-                  JSON.stringify({
-                    sessionStorage: sessionStorage,
-                  })
-                );
+
+          msalInstance.handleRedirectPromise().then((tokenResponse) => {
+            if (tokenResponse !== null) {
+              microsoftTeams.authentication.notifySuccess(JSON.stringify({ token: tokenResponse.accessToken }));
+            } else {
+              // iOS fallback — try getting token silently from cache
+              const accounts = msalInstance.getAllAccounts();
+              if (accounts.length > 0) {
+                msalInstance.acquireTokenSilent({
+                  account: accounts[0],
+                  scopes: ["https://graph.microsoft.com/.default"]
+                }).then((silentResponse) => {
+                  microsoftTeams.authentication.notifySuccess(JSON.stringify({ token: silentResponse.accessToken }));
+                }).catch((err) => {
+                  microsoftTeams.authentication.notifyFailure(JSON.stringify(err));
+                });
               } else {
-                microsoftTeams.authentication.notifyFailure("Get empty response.");
+                microsoftTeams.authentication.notifyFailure("No token and no accounts in cache.");
               }
-            })
-            .catch((error) => {
-              microsoftTeams.authentication.notifyFailure(JSON.stringify(error));
-            });
+            }
+          }).catch((error) => {
+            microsoftTeams.authentication.notifyFailure(JSON.stringify(error));
+          });
         });
       });
     </script>
