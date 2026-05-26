@@ -781,9 +781,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             }
             else {
                 defaultAdditionalChannels = [
-                    { channelName: constants.defaultChannelConstants.Logistics, channelType: constants.standardChannel, hasRegexError: false, regexErrorMessage: "" },
-                    { channelName: constants.defaultChannelConstants.Planning, channelType: constants.standardChannel, hasRegexError: false, regexErrorMessage: "" },
-                    { channelName: constants.defaultChannelConstants.Recovery, channelType: constants.standardChannel, hasRegexError: false, regexErrorMessage: "" }
+                    { channelName: "Logistics", channelType: constants.standardChannel, hasRegexError: false, regexErrorMessage: "" },
+                    { channelName: "Plans", channelType: constants.standardChannel, hasRegexError: false, regexErrorMessage: "" },
+                    { channelName: "Recovery", channelType: constants.standardChannel, hasRegexError: false, regexErrorMessage: "" }
                 ];
             }
         }
@@ -3942,15 +3942,15 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     ...this.state.incDetailsItem,
                     additionalTeamChannels: [
                         {
-                            channelName: constants.defaultChannelConstants.Logistics,
+                            channelName: "Logistics",
                             hasRegexError: false, regexErrorMessage: ""
                         },
                         {
-                            channelName: constants.defaultChannelConstants.Planning,
+                            channelName: "Plans",
                             hasRegexError: false, regexErrorMessage: ""
                         },
                         {
-                            channelName: constants.defaultChannelConstants.Recovery,
+                            channelName: "Recovery",
                             hasRegexError: false, regexErrorMessage: ""
                         }
                     ]
