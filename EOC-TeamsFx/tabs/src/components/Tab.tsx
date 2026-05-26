@@ -7,7 +7,7 @@ export default function Tab() {
   return (
     <div>
       <TeamsFxContext.Consumer>
-        {(value) => <EOCHome teamsUserCredential={value.teamsUserCredential} />}
+        {(value) => <EOCHome msalInstance={value.msalInstance!} />}
       </TeamsFxContext.Consumer>
     </div>
   );

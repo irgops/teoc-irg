@@ -56,5 +56,10 @@
   "webApplicationInfo": {
     "id": "f64df00f-de32-4672-af73-6167b1f3aef8",
     "resource": "api://teoc-irg.azurewebsites.net/f64df00f-de32-4672-af73-6167b1f3aef8"
+  },
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": []
+    }
   }
 }

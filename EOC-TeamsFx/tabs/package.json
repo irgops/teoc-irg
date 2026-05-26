@@ -12,6 +12,7 @@
         "@microsoft/mgt-react": "^2.10.0",
         "@microsoft/mgt-teamsfx-provider": "^4.2.1",
         "@microsoft/microsoft-graph-client": "3.0.1",
+        "@azure/msal-browser": "^3.27.0",
         "@microsoft/teams-js": "^2.21.0",
         "@microsoft/teamsfx": "2.1.0",
         "@microsoft/teamsfx-react": "^2.1.1",

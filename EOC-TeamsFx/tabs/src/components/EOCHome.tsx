@@ -1,14 +1,13 @@
 import { initializeIcons, MessageBar, MessageBarType } from "@fluentui/react";
 import { FluentProvider, teamsDarkTheme, teamsHighContrastTheme, teamsLightTheme, Theme } from "@fluentui/react-components";
-import { Button, Dialog, Loader } from "@fluentui/react-northstar";
+import { Dialog, Loader } from "@fluentui/react-northstar";
 import loadable from "@loadable/component";
 import { ApplicationInsights } from "@microsoft/applicationinsights-web";
 import { Graph, Providers, ProviderState } from "@microsoft/mgt-element";
 import { SimpleProvider } from "@microsoft/mgt-react";
-import { TeamsFxProvider } from "@microsoft/mgt-teamsfx-provider";
 import { Client } from "@microsoft/microsoft-graph-client";
 import * as microsoftTeams from "@microsoft/teams-js";
-import { TeamsUserCredential } from "@microsoft/teamsfx";
+import { IPublicClientApplication } from "@azure/msal-browser";
 import "bootstrap/dist/css/bootstrap.min.css";
 import React from "react";
 import LocalizedStrings from "react-localization";
@@ -39,7 +38,6 @@ let graphBaseURL = process.env.REACT_APP_GRAPH_BASE_URL?.toString().replace(/\s+
 graphBaseURL = graphBaseURL || constants.defaultGraphBaseURL;
 
 interface IEOCHomeState {
-    showLoginPage: boolean;
     graph: Client;
     tenantName: string;
     graphContextURL: string;
@@ -86,14 +84,14 @@ interface IEOCHomeState {
 }
 
 interface IEOCHomeProps {
-    teamsUserCredential: any;
+    msalInstance: IPublicClientApplication;
 }
 
 let localeStrings = new LocalizedStrings(localizedStrings);
 
 
 export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState> {
-    private credential: TeamsUserCredential = this.props?.teamsUserCredential;
+    private msalInstance: IPublicClientApplication = this.props.msalInstance;
     private scope = graphConfig.scope;
     private dataService = new CommonService();
     private successMessagebarRef: React.RefObject<HTMLDivElement>;
@@ -102,17 +100,12 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
     constructor(props: any) {
         super(props);
 
-        const { scope } = {
-            scope: graphConfig.scope
-        };
-
-        const graph = this.createMicrosoftGraphClient(this.credential, scope);
+        const graph = this.createMicrosoftGraphClient(this.props.msalInstance, graphConfig.scope);
         console.log(constants.infoLogPrefix + "graph ", graph);
 
         this.successMessagebarRef = React.createRef();
         this.errorMessagebarRef = React.createRef();
         this.state = {
-            showLoginPage: true,
             graph: graph,
             tenantName: '',
             graphContextURL: '',
@@ -164,92 +157,92 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
     }
 
     async componentDidMount() {
-        this.credential = this.credential || this.props?.teamsUserCredential;
-        if (this.credential) {
-            await this.initGraphToolkit(this.credential, graphConfig.scope);
-            await this.checkIsConsentNeeded();
-
-            try {
-                /*Identify the context of the app, whether its being opened as Personal app or from Teams tab.
-                 If opened from Teams tab retrieve Incident ID from the current Teams Name*/
-                microsoftTeams.app.getContext().then(ctx => {
-                    microsoftTeams.pages.tabs.getMruTabInstances().then((tabInfo: any) => {
-                        if (ctx.channel?.id && ctx.channel?.displayName && tabInfo.teamTabs[0].tabName === constants.activeDashboardTabTitle) {
-                            this.setState({
-                                activeDashboardIncidentId: ctx.sharePointSite?.teamSitePath?.split("_")[1] as any,
-                                fromActiveDashboardTab: true
-                            });
-                        }
-                    });
-                });
-
-                // get current user's language from Teams App settings
-                microsoftTeams.app.getContext().then(ctx => {
-                    if (ctx?.app?.locale !== "") {
-                        this.setState({
-                            locale: ctx.app.locale,
-                            userPrincipalName: ctx.user?.userPrincipalName,
-                            tenantID: ctx.user?.tenant?.id
-                        });
-                    } else {
-                        this.setState({
-                            locale: constants.defaultLocale,
-                            userPrincipalName: ctx.user?.userPrincipalName,
-                            tenantID: ctx.user?.tenant?.id
-                        });
-                    }
-
-                    //get current theme from the teams context
-                    const theme = ctx.app.theme ?? constants.defaultMode;
-                    this.updateTheme(theme);
-                });
-
-                //Get the app settings from the teams context. This is required to create the 'ActiveDashboard' tab
-                microsoftTeams.pages.getConfig().then((settings) => {
-                    console.log(constants.infoLogPrefix + "settings ", settings);
-                    this.setState({ appSettings: settings });
-                });
-
-                //binds the current theme to the inbuilt teams hook which is called whenever the theme changes 
-                microsoftTeams.app.registerOnThemeChangeHandler((theme: string) => {
-                    this.updateTheme(theme);
-                });
-
-                //Initialize App Insights
-                appInsights = new ApplicationInsights({
-                    config: {
-                        instrumentationKey: process.env.REACT_APP_APPINSIGHTS_INSTRUMENTATIONKEY ? process.env.REACT_APP_APPINSIGHTS_INSTRUMENTATIONKEY : ''
-                    }
-                });
-
-                appInsights.loadAppInsights();
-            } catch (error) {
-                this.setState({
-                    locale: constants.defaultLocale
-                });
-                //log exception to AppInsights
-                this.dataService.trackException(appInsights, error, constants.componentNames.EOCHomeComponent, 'ComponentDidMount', this.state.userPrincipalName);
-
-            }
-
-            // call method to get the tenant details
-            if (!this.state.showLoginPage) {
-                await this.getTenantAndSiteDetails();
-                await this.getCurrentUserDetails();
-
-                //method to get settings from config list
-                await this.getConfigSettings();
-            }
+        // Warm up the NAA token cache; Teams broker handles auth silently — no popup needed.
+        try {
+            await this.msalInstance.acquireTokenSilent({ scopes: this.scope });
+        } catch (error) {
+            console.error(constants.errorLogPrefix + "NAA_InitialTokenAcquisition", error);
         }
+
+        await this.initGraphToolkit(this.msalInstance, graphConfig.scope);
+
+        try {
+            /*Identify the context of the app, whether its being opened as Personal app or from Teams tab.
+             If opened from Teams tab retrieve Incident ID from the current Teams Name*/
+            microsoftTeams.app.getContext().then(ctx => {
+                microsoftTeams.pages.tabs.getMruTabInstances().then((tabInfo: any) => {
+                    if (ctx.channel?.id && ctx.channel?.displayName && tabInfo.teamTabs[0].tabName === constants.activeDashboardTabTitle) {
+                        this.setState({
+                            activeDashboardIncidentId: ctx.sharePointSite?.teamSitePath?.split("_")[1] as any,
+                            fromActiveDashboardTab: true
+                        });
+                    }
+                });
+            });
+
+            // get current user's language from Teams App settings
+            microsoftTeams.app.getContext().then(ctx => {
+                if (ctx?.app?.locale !== "") {
+                    this.setState({
+                        locale: ctx.app.locale,
+                        userPrincipalName: ctx.user?.userPrincipalName,
+                        tenantID: ctx.user?.tenant?.id
+                    });
+                } else {
+                    this.setState({
+                        locale: constants.defaultLocale,
+                        userPrincipalName: ctx.user?.userPrincipalName,
+                        tenantID: ctx.user?.tenant?.id
+                    });
+                }
+
+                //get current theme from the teams context
+                const theme = ctx.app.theme ?? constants.defaultMode;
+                this.updateTheme(theme);
+            });
+
+            //Get the app settings from the teams context. This is required to create the 'ActiveDashboard' tab
+            microsoftTeams.pages.getConfig().then((settings) => {
+                console.log(constants.infoLogPrefix + "settings ", settings);
+                this.setState({ appSettings: settings });
+            });
+
+            //binds the current theme to the inbuilt teams hook which is called whenever the theme changes
+            microsoftTeams.app.registerOnThemeChangeHandler((theme: string) => {
+                this.updateTheme(theme);
+            });
+
+            //Initialize App Insights
+            appInsights = new ApplicationInsights({
+                config: {
+                    instrumentationKey: process.env.REACT_APP_APPINSIGHTS_INSTRUMENTATIONKEY ? process.env.REACT_APP_APPINSIGHTS_INSTRUMENTATIONKEY : ''
+                }
+            });
+
+            appInsights.loadAppInsights();
+        } catch (error) {
+            this.setState({
+                locale: constants.defaultLocale
+            });
+            //log exception to AppInsights
+            this.dataService.trackException(appInsights, error, constants.componentNames.EOCHomeComponent, 'ComponentDidMount', this.state.userPrincipalName);
+        }
+
+        await this.getTenantAndSiteDetails();
+        await this.getCurrentUserDetails();
+
+        //method to get settings from config list
+        await this.getConfigSettings();
     }
-    //create MS Graph client
-    createMicrosoftGraphClient(credential: TeamsUserCredential, scopes: string[]) {
-        const authProvider = new TeamsFxProvider(credential, scopes);
-        const graphClient = Client.initWithMiddleware({
-            authProvider: authProvider,
-            baseUrl: graphBaseURL
-        });
-        return graphClient;
+    //create MS Graph client backed by NAA token acquisition
+    createMicrosoftGraphClient(msalInstance: IPublicClientApplication, scopes: string[]) {
+        const authProvider = {
+            getAccessToken: async () => {
+                const response = await msalInstance.acquireTokenSilent({ scopes });
+                return response.accessToken;
+            }
+        };
+        return Client.initWithMiddleware({ authProvider, baseUrl: graphBaseURL });
     }
 
     //method to perform actions based on state changes
@@ -289,132 +282,19 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
     };
 
 
-    // Initialize the toolkit and get access token
-    async initGraphToolkit(credential: TeamsUserCredential, scopeVar: string[]) {
-        async function getAccessToken(scopeVar: any) {
-            let tokenObj = await credential.getToken(scopeVar);
-            return tokenObj?.token || "";
-        }
+    // Initialize the MGT toolkit with NAA-backed token acquisition
+    async initGraphToolkit(msalInstance: IPublicClientApplication, scopeVar: string[]) {
+        const getAccessToken = async (scopes: string[]) => {
+            const response = await msalInstance.acquireTokenSilent({ scopes });
+            return response?.accessToken || "";
+        };
 
-        async function login() {
-            try {
-                await credential.login(scopeVar);
-            } catch (err) {
-                alert("Login failed: " + err);
-                return;
-            }
-            Providers.globalProvider.setState(ProviderState.SignedIn);
-        }
-
-        async function logout() { }
-
-        Providers.globalProvider = new SimpleProvider(getAccessToken, login, logout);
+        Providers.globalProvider = new SimpleProvider(getAccessToken);
         Providers.globalProvider.setState(ProviderState.SignedIn);
-        //set graph context for mgt toolkit          
+        //set graph context for mgt toolkit
         Providers.globalProvider.graph = new Graph(this.state.graph as any);
     }
 
-    // check if token is valid else show login to get token
-    async checkIsConsentNeeded() {
-        try {
-            await this.credential.getToken(this.scope);
-        } catch (error) {
-            // Log immediately — before AppInsights initialises — so mobile auth
-            // failures are always captured in browser console / Azure diagnostics.
-            console.error(
-                constants.errorLogPrefix + "EOCHome_Auth_OBOFailed — attempting mobile Graph-token fallback",
-                error
-            );
-
-            // Mobile path: Teams mobile may provide a token already scoped to
-            // https://graph.microsoft.com. Validate the azp claim and, if it
-            // matches a known Teams client, use it directly for Graph calls.
-            try {
-                const ssoToken = await new Promise<string>((resolve, reject) => {
-                    microsoftTeams.authentication.getAuthToken({
-                        successCallback: (token: string) => resolve(token),
-                        failureCallback: (err: string) => reject(new Error(err))
-                    });
-                });
-
-                // Decode payload — client-side only; no signature verification needed
-                // to check aud/azp because we immediately use it against Graph.
-                const payloadB64 = ssoToken.split('.')[1];
-                const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
-                const teamsClientIds = [
-                    '1fec8e78-bce4-4aaf-ab1b-5451cc387264', // Teams desktop/web
-                    '5e3ce6c0-2b1f-4285-8d4b-75ee78787346'  // Teams mobile
-                ];
-
-                if (
-                    payload.aud === 'https://graph.microsoft.com' &&
-                    teamsClientIds.includes(payload.azp)
-                ) {
-                    console.log(
-                        constants.infoLogPrefix +
-                        "Mobile auth path: Graph-scoped SSO token detected, using directly"
-                    );
-                    // Build a Graph client that uses the SSO token as-is
-                    const mobileGraph = this.createMicrosoftGraphClient(
-                        {
-                            getToken: async () => ({ token: ssoToken, expiresOnTimestamp: payload.exp * 1000 })
-                        } as any,
-                        this.scope
-                    );
-                    this.setState({ showLoginPage: false, graph: mobileGraph });
-                    return false;
-                } else {
-                    console.error(
-                        constants.errorLogPrefix +
-                        "EOCHome_Auth_MobileFallback — token aud/azp mismatch, showing login",
-                        { aud: payload.aud, azp: payload.azp }
-                    );
-                }
-            } catch (mobileError) {
-                console.error(
-                    constants.errorLogPrefix + "EOCHome_Auth_MobileFallbackFailed",
-                    mobileError
-                );
-            }
-
-            this.setState({
-                showLoginPage: true
-            });
-            return true;
-        }
-        this.setState({
-            showLoginPage: false
-        });
-        return false;
-    }
-
-    // this function gets called on Authorized button click
-    public loginClick = async () => {
-        const { scope } = {
-            scope: graphConfig.scope
-        };
-
-        const credential = this.credential;
-        await credential.login(scope);
-        const graph = this.createMicrosoftGraphClient(credential, scope); // create graph object
-        console.log(constants.infoLogPrefix + "graph ", graph);
-
-        const profile = await this.dataService.getGraphData(graphConfig.meGraphEndpoint, graph); // get user profile to validate the API
-
-        // validate if the above API call is returning result
-        if (!!profile) {
-            this.setState({ showLoginPage: false, graph: graph })
-
-            // call method to get the tenant details
-            if (!this.state.showLoginPage) {
-                await this.getTenantAndSiteDetails();
-                await this.getCurrentUserDetails();
-            }
-        }
-        else {
-            this.setState({ showLoginPage: true })
-        }
-    }
 
     // this method connects with service layer to get the tenant name and SharePoint site Id
     public async getTenantAndSiteDetails() {
@@ -809,12 +689,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                             appTitle={this.state.appTitle}                           
                         />
 
-                        {this.state.showLoginPage &&
-                            <div className='loginButton'>
-                                <Button primary content={localeStrings.btnLogin} disabled={!this.state.showLoginPage} onClick={this.loginClick} />
-                            </div>
-                        }
-                        {!this.state.showLoginPage && this.state.siteId !== "" &&
+                        {this.state.siteId !== "" &&
                             <div>
                                 {this.state.showSuccessMessageBar &&
                                     <div ref={this.successMessagebarRef}>
