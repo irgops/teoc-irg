@@ -31,6 +31,23 @@ export default function App() {
 
       const msal = new PublicClientApplication(config);
       await msal.initialize();
+
+      // Establish the active account before EOCHome's acquireTokenSilent runs.
+      // ssoSilent routes through the Teams NAA broker — no popup, no redirect.
+      try {
+        const result = await msal.ssoSilent({
+          loginHint: ctx.user?.userPrincipalName,
+          scopes: ["openid", "profile"],
+        });
+        msal.setActiveAccount(result.account);
+      } catch (ssoError) {
+        console.warn("NAA ssoSilent failed, falling back to getAllAccounts()", ssoError);
+        const accounts = msal.getAllAccounts();
+        if (accounts.length > 0) {
+          msal.setActiveAccount(accounts[0]);
+        }
+      }
+
       setMsalInstance(msal);
       setLoading(false);
     }
