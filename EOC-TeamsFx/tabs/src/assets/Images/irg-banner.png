@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="69" viewBox="0 0 1200 69">
+  <rect width="1200" height="69" fill="#464775"/>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+        font-family="Segoe UI, sans-serif" font-size="20" fill="#ffffff" opacity="0.4">
+    IRG — replace with irg-banner.png before deploy
+  </text>
+</svg>

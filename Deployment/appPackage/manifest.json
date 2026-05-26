@@ -5,8 +5,8 @@
   "id": "bef61400-db9b-41d4-a617-403deb7bbe77",
   "packageName": "com.microsoft.teams.extension",
   "developer": {
-    "name": "Teams Customer Advocacy Group",
-    "websiteUrl": "https://aka.ms/teamsapptemplates",
+    "name": "Integrated Response Group",
+    "websiteUrl": "https://www.integratedresponsegroup.org",
     "privacyUrl": "https://privacy.microsoft.com/en-us/privacystatement",
     "termsOfUseUrl": "https://www.microsoft.com/en-us/servicesagreement"
   },
@@ -15,19 +15,19 @@
     "outline": "resources/outline.png"
   },
   "name": {
-    "short": "TEOC",
-    "full": "Microsoft Teams Emergency Operations Center"
+    "short": "IRG TEOC",
+    "full": "IRG Emergency Operations Center"
   },
   "description": {
-    "short": "Microsoft Teams Emergency Operations Center",
-    "full": "The Microsoft Teams Emergency Operations Center (TEOC) solution template leverages the power of the Microsoft 365 platform to centralize incident response, information sharing and field communications using powerful services like Microsoft Lists, SharePoint and more. An open-source solution supported by Microsoft it provides core functionality out of the box or can be extended to meet specific agency requirements."
+    "short": "IRG Emergency Operations Center",
+    "full": "The IRG Emergency Operations Center (EOC) centralizes incident command, field communications, and multi-agency coordination using Microsoft 365. Built for rapid deployment during disaster response operations."
   },
   "accentColor": "#FFFFFF",
   "bots": [],
   "composeExtensions": [],
   "configurableTabs": [
     {
-      "configurationUrl": "https://<<appDomain>>/index.html#/config",
+      "configurationUrl": "https://teoc-irg.azurewebsites.net/index.html#/config",
       "canUpdateConfiguration": true,
       "scopes": [
         "team",
@@ -38,9 +38,9 @@
   "staticTabs": [
     {
       "entityId": "index",
-      "name": "Teams EOC",
-      "contentUrl": "https://<<appDomain>>/index.html#/tab",
-      "websiteUrl": "https://<<websiteUrl>>",
+      "name": "IRG EOC",
+      "contentUrl": "https://teoc-irg.azurewebsites.net/index.html#/tab",
+      "websiteUrl": "https://irgops.sharepoint.com/sites/IRGEOC",
       "scopes": [
         "personal"
       ]
@@ -51,10 +51,10 @@
     "messageTeamMembers"
   ],
   "validDomains": [
-    "<<appDomain>>"
+    "teoc-irg.azurewebsites.net"
   ],
   "webApplicationInfo": {
-    "id": "<<clientId>>",
-    "resource": "api://<<appDomain>>/<<clientId>>"
+    "id": "f64df00f-de32-4672-af73-6167b1f3aef8",
+    "resource": "api://teoc-irg.azurewebsites.net/f64df00f-de32-4672-af73-6167b1f3aef8"
   }
 }

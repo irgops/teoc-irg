@@ -319,6 +319,64 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
         try {
             await this.credential.getToken(this.scope);
         } catch (error) {
+            // Log immediately — before AppInsights initialises — so mobile auth
+            // failures are always captured in browser console / Azure diagnostics.
+            console.error(
+                constants.errorLogPrefix + "EOCHome_Auth_OBOFailed — attempting mobile Graph-token fallback",
+                error
+            );
+
+            // Mobile path: Teams mobile may provide a token already scoped to
+            // https://graph.microsoft.com. Validate the azp claim and, if it
+            // matches a known Teams client, use it directly for Graph calls.
+            try {
+                const ssoToken = await new Promise<string>((resolve, reject) => {
+                    microsoftTeams.authentication.getAuthToken({
+                        successCallback: (token: string) => resolve(token),
+                        failureCallback: (err: string) => reject(new Error(err))
+                    });
+                });
+
+                // Decode payload — client-side only; no signature verification needed
+                // to check aud/azp because we immediately use it against Graph.
+                const payloadB64 = ssoToken.split('.')[1];
+                const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+                const teamsClientIds = [
+                    '1fec8e78-bce4-4aaf-ab1b-5451cc387264', // Teams desktop/web
+                    '5e3ce6c0-2b1f-4285-8d4b-75ee78787346'  // Teams mobile
+                ];
+
+                if (
+                    payload.aud === 'https://graph.microsoft.com' &&
+                    teamsClientIds.includes(payload.azp)
+                ) {
+                    console.log(
+                        constants.infoLogPrefix +
+                        "Mobile auth path: Graph-scoped SSO token detected, using directly"
+                    );
+                    // Build a Graph client that uses the SSO token as-is
+                    const mobileGraph = this.createMicrosoftGraphClient(
+                        {
+                            getToken: async () => ({ token: ssoToken, expiresOnTimestamp: payload.exp * 1000 })
+                        } as any,
+                        this.scope
+                    );
+                    this.setState({ showLoginPage: false, graph: mobileGraph });
+                    return false;
+                } else {
+                    console.error(
+                        constants.errorLogPrefix +
+                        "EOCHome_Auth_MobileFallback — token aud/azp mismatch, showing login",
+                        { aud: payload.aud, azp: payload.azp }
+                    );
+                }
+            } catch (mobileError) {
+                console.error(
+                    constants.errorLogPrefix + "EOCHome_Auth_MobileFallbackFailed",
+                    mobileError
+                );
+            }
+
             this.setState({
                 showLoginPage: true
             });

@@ -8,7 +8,7 @@
     "roleDefaultList": "TEOC-RoleDefaultValues",
     "incidentTypeDefaultRolesList": "TEOC-IncidentTypeDefaultRoles",
     "userRolesList": "TEOC-UserRoles",
-    "appTitle": "Microsoft Teams Emergency Operations Center",
+    "appTitle": "IRG Emergency Operations Center",
     "defaulTasksList": "TEOC-Tasks",
     "lists": [
         {

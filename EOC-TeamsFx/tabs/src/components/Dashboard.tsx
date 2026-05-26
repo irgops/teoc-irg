@@ -150,7 +150,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
              // create graph endpoint for querying Incident Transaction list
             let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}` + graphConfig.listsGraphEndpoint + `/${siteConfig.incidentsList}/items?$expand=fields
                 ($select=StatusLookupId,Status,id,IncidentId,IncidentName,IncidentCommander,Location,StartDateTime,
-                Modified,TeamWebURL,Description,IncidentType,RoleAssignment,RoleLeads,Severity,PlanID,
+                Modified,TeamWebURL,Description,IncidentType,RoleAssignment,RoleLeads,PlanID,
                 BridgeID,BridgeLink,NewsTabLink,CloudStorageLink)&$Top=5000`;
 
            let allIncidents = this.sortDashboardData(await this.dataService.getDashboardData(graphEndpoint, this.props.graph));
@@ -324,8 +324,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
             return ((incident["incidentName"] && incident["incidentName"].toLowerCase().indexOf(searchKeyword) > -1) ||
                 (incident["incidentId"] && (incident["incidentId"]).toString().toLowerCase().indexOf(searchKeyword) > -1) ||
                 (incident["incidentCommander"] && incident["incidentCommander"].toLowerCase().indexOf(searchKeyword) > -1) ||
-                (incident["location"] && incident["location"].toLowerCase().indexOf(searchKeyword) > -1) ||
-                (incident["severity"] && incident["severity"].toLowerCase().indexOf(searchKeyword) > -1))
+                (incident["location"] && incident["location"].toLowerCase().indexOf(searchKeyword) > -1))
         });
 
         //On Click of Cancel icon
@@ -381,13 +380,6 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
         );
     }
 
-    // format the cell for Severity column to fix accessibility issues
-    severityFormatter = (cell: any, gridRow: any, rowIndex: any, formatExtraData: any) => {
-        const ariaLabel = `${this.props.localeStrings.fieldSeverity} ${cell}`
-        return (
-            <span aria-label={ariaLabel}><span title={cell} aria-hidden="true">{cell}</span></span>
-        );
-    }
 
     // format the cell for Incident Commander column to fix accessibility issues
     incidentCommanderFormatter = (cell: any, gridRow: any, rowIndex: any, formatExtraData: any) => {
@@ -788,15 +780,6 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                 formatter: this.incidentNameFormatter,
                 headerFormatter: this.headerFormatter,
                 headerAttrs: { 'aria-sort': this.state.incidentNameAriaSort, 'role': 'columnheader', 'scope': 'col' }
-            }, {
-                dataField: 'severity',
-                text: this.props.localeStrings.fieldSeverity,
-                formatter: this.severityFormatter,
-                headerAttrs: { 'aria-sort': this.state.severityAriaSort, 'role': 'columnheader', 'scope': 'col' },
-                sort: true,
-                sortValue: (cell: any) => constants.severity.indexOf(cell),
-                sortCaret: this.customSortCaret,
-                headerFormatter: this.headerFormatter
             }, {
                 dataField: 'incidentCommanderObj',
                 text: this.props.localeStrings.incidentCommander,

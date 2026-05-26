@@ -312,25 +312,52 @@
           </pnp:Fields>
         <pnp:DataRows UpdateBehavior="Overwrite">
           <pnp:DataRow>
-              <pnp:DataValue FieldName="Title">Secondary Incident Commander</pnp:DataValue>
+              <pnp:DataValue FieldName="Title">Deputy IC</pnp:DataValue>
           </pnp:DataRow>
           <pnp:DataRow>
-              <pnp:DataValue FieldName="Title">EOC Coordinator</pnp:DataValue>              
+              <pnp:DataValue FieldName="Title">G1 — Personnel</pnp:DataValue>
           </pnp:DataRow>
           <pnp:DataRow>
-              <pnp:DataValue FieldName="Title">Watch Officer</pnp:DataValue>              
+              <pnp:DataValue FieldName="Title">G2 — Intel / Situation</pnp:DataValue>
           </pnp:DataRow>
           <pnp:DataRow>
-              <pnp:DataValue FieldName="Title">Public Information Officer</pnp:DataValue>              
+              <pnp:DataValue FieldName="Title">G3 — Operations</pnp:DataValue>
           </pnp:DataRow>
           <pnp:DataRow>
-              <pnp:DataValue FieldName="Title">Logistics Coordinator</pnp:DataValue>              
+              <pnp:DataValue FieldName="Title">G4 — Logistics</pnp:DataValue>
           </pnp:DataRow>
           <pnp:DataRow>
-              <pnp:DataValue FieldName="Title">Planning Coordinator</pnp:DataValue>              
+              <pnp:DataValue FieldName="Title">G5 — Plans</pnp:DataValue>
           </pnp:DataRow>
           <pnp:DataRow>
-              <pnp:DataValue FieldName="Title">New Role (Specify a new role to be created and assign users to)</pnp:DataValue>              
+              <pnp:DataValue FieldName="Title">G6 — Comms / Signal</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">G8 — Finance / Admin</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">G9 — Civil Affairs / External</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">Ground Ops Lead</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">Air Ops Lead — Rotary</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">Air Ops Lead — Fixed Wing</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">Medical Lead</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">Safety Officer</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">Public Information Officer</pnp:DataValue>
+          </pnp:DataRow>
+          <pnp:DataRow>
+              <pnp:DataValue FieldName="Title">New Role (Specify a new role to be created and assign users to)</pnp:DataValue>
           </pnp:DataRow>
         </pnp:DataRows>
 

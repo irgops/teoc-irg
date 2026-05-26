@@ -910,3 +910,177 @@ div[class~="active-bridge-area-darkcontrast"] {
             }
         }
 }
+
+// ── IRG dashboard panels (Assessment, Team Roster, Activity Feed) ──
+div[class~="irg-panel"] {
+    background: #FFFFFF 0% 0% no-repeat padding-box;
+    box-shadow: 0px 2px 4px #0000001A;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    overflow: hidden;
+
+    div[class="irg-panel-heading"] {
+        display: flex;
+        align-items: center;
+        padding: 8px 15px;
+        background: #404257 0% 0% no-repeat padding-box;
+        border-radius: 4px 4px 0px 0px;
+        font: normal normal 600 16px/28px Segoe UI;
+        color: #FFFFFF;
+        letter-spacing: 0px;
+
+        i[class~="irg-panel-icon"] {
+            font-size: 16px;
+            margin-right: 6px;
+        }
+    }
+
+    div[class="irg-panel-empty"] {
+        padding: 16px 15px;
+        font: normal normal normal 14px/20px Segoe UI;
+        color: #666666;
+        text-align: center;
+    }
+
+    table[class="irg-assessment-table"],
+    table[class="irg-roster-table"] {
+        width: 100%;
+        border-collapse: collapse;
+        font: normal normal normal 13px/18px Segoe UI;
+
+        thead tr {
+            background: #F4F4F4;
+        }
+
+        th {
+            padding: 6px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #33344A;
+            border-bottom: 1px solid #E1DFDD;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 5px 10px;
+            color: #33344A;
+            border-bottom: 1px solid #F0EEEd;
+            word-break: break-word;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #F8F8FC;
+        }
+    }
+
+    ul[class="irg-activity-list"] {
+        list-style: none;
+        margin: 0;
+        padding: 8px 0;
+        max-height: 300px;
+        overflow-y: auto;
+
+        li[class="irg-activity-item"] {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            grid-template-rows: auto auto;
+            column-gap: 8px;
+            row-gap: 1px;
+            padding: 6px 12px;
+            border-bottom: 1px solid #F0EEEE;
+            font: normal normal normal 12px/18px Segoe UI;
+            color: #33344A;
+
+            &:last-child {
+                border-bottom: none;
+            }
+
+            span[class="irg-activity-version"] {
+                grid-column: 1;
+                grid-row: 1;
+                font-weight: 600;
+                color: #404257;
+                white-space: nowrap;
+                font-size: 11px;
+            }
+
+            span[class="irg-activity-by"] {
+                grid-column: 2;
+                grid-row: 1;
+                font-weight: 500;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            span[class="irg-activity-date"] {
+                grid-column: 3;
+                grid-row: 1;
+                color: #888888;
+                white-space: nowrap;
+                font-size: 11px;
+            }
+
+            span[class="irg-activity-reason"] {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                color: #555555;
+                font-style: italic;
+                font-size: 11px;
+            }
+        }
+    }
+}
+
+// Dark / contrast theme overrides for IRG panels
+div[class~="active-bridge-area-darkcontrast"] {
+    div[class~="irg-panel"] {
+        background: var(--colorNeutralBackground1);
+        box-shadow: 0px 2px 4px var(--colorBrandBackgroundStatic);
+
+        div[class="irg-panel-heading"] {
+            background: var(--colorCompoundBrandForeground1);
+            color: #000000;
+        }
+
+        div[class="irg-panel-empty"] {
+            color: var(--colorNeutralForeground2);
+        }
+
+        table[class="irg-assessment-table"],
+        table[class="irg-roster-table"] {
+            thead tr {
+                background: var(--colorNeutralBackground3);
+            }
+
+            th, td {
+                color: var(--colorNeutralForeground1);
+                border-color: var(--colorNeutralStroke1);
+            }
+
+            tbody tr:hover {
+                background: var(--colorNeutralBackground2);
+            }
+        }
+
+        ul[class="irg-activity-list"] {
+            li[class="irg-activity-item"] {
+                border-color: var(--colorNeutralStroke1);
+                color: var(--colorNeutralForeground1);
+
+                span[class="irg-activity-version"] {
+                    color: var(--colorCompoundBrandForeground1);
+                }
+
+                span[class="irg-activity-date"],
+                span[class="irg-activity-reason"] {
+                    color: var(--colorNeutralForeground2);
+                }
+            }
+        }
+    }
+}

@@ -89,7 +89,6 @@ export interface IIncidentDetailsState {
     showNoAccessMessage: boolean;
     teamNameConfigArray: any[];
     prefixValue: string;
-    selectedSeverity: number;
     roleDefaultData: any[];
     incidentTypeRoleDefaultData: any[];
     saveDefaultRoleCheck: any;
@@ -178,7 +177,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             showNoAccessMessage: false,
             teamNameConfigArray: [],
             prefixValue: "",
-            selectedSeverity: 0,
             roleDefaultData: [],
             incidentTypeRoleDefaultData: [],
             saveDefaultRoleCheck: false,
@@ -567,7 +565,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 teamGroupId: teamGroupId,
                 incidentTypeSearchQuery: this.props.incidentData.incidentType ? this.props.incidentData.incidentType : '',
                 dropdownOptions: dropdownOptions,
-                selectedSeverity: constants.severity.indexOf(incInfo.severity) === -1 ? 0 : constants.severity.indexOf(incInfo.severity),
                 isEditMode: true,
                 toggleCloudStorageLocation: incInfo.cloudStorageLink.trim() !== "",
                 selectedLocation: JSON.parse(incInfo.location)
@@ -1715,7 +1712,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 RoleAssignment: roleAssignment.trim(),
                                 RoleLeads: roleLead.trim(),
                                 IncidentCommander: incidentInfo.incidentCommander.userName + "|" + incidentInfo.incidentCommander.userId + "|" + incidentInfo.incidentCommander.userEmail + ";",
-                                Severity: constants.severity[this.state.selectedSeverity],
                                 CloudStorageLink: this.state.toggleCloudStorageLocation ? incidentInfo.cloudStorageLink.trim() : ""
                             }
                         }
@@ -1869,7 +1865,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                             IncidentCommander: incidentInfo.incidentCommander.userName + "|" + incidentInfo.incidentCommander.userId + "|" + incidentInfo.incidentCommander.userEmail,
                             RoleAssignment: roleAssignment.trim(),
                             RoleLeads: roleLead.trim(),
-                            Severity: constants.severity[this.state.selectedSeverity],
                             ReasonForUpdate: incidentInfo.reasonForUpdate,
                             CloudStorageLink: this.state.toggleCloudStorageLocation ? incidentInfo.cloudStorageLink.trim() : ""
                         }
@@ -2578,12 +2573,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 {
                                                     "type": "TextBlock",
                                                     "spacing": "None",
-                                                    "text": "**Severity:**  " + constants.severity[this.state.selectedSeverity],
-                                                    "wrap": true
-                                                },
-                                                {
-                                                    "type": "TextBlock",
-                                                    "spacing": "None",
                                                     "text": "**Location:**  " + this.getLocationDisplayName(this.state.selectedLocation),
                                                     "wrap": true
                                                 },
@@ -3269,7 +3258,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     // create Team associated with Teams group
     private async createTeam(groupInfo: any): Promise<any> {
         return new Promise(async (resolve) => {
-            let maxTeamCreationAttempt = 15, isTeamCreated = false;
+            const MAX_ATTEMPTS = 5;
+            let isTeamCreated = false;
 
             let result = {
                 status: false,
@@ -3280,42 +3270,47 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 loaderMessage: this.props.localeStrings.createTeamLoaderMessage
             });
 
-            // loop till the team is created
-            // attempting multiple times as sometimes teams group doesn't reflect immediately after creation
-            while (isTeamCreated === false && maxTeamCreationAttempt > 0) {
+            // Wait 15 s for Azure AD group replication before first attempt
+            // (Graph returns 404 if the group hasn't propagated yet)
+            await this.timeOut(15000);
+
+            for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
                 try {
-                    // create the team setting object
                     let teamSettings = JSON.stringify(this.getTeamSettings());
-                    this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id + graphConfig.teamGraphEndpoint
+                    this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id + graphConfig.teamGraphEndpoint;
 
-                    // call method to create team
-                    let updatedTeamInfo = await this.dataService.sendGraphPutRequest(this.graphEndpoint, this.props.graph, teamSettings)
+                    let updatedTeamInfo = await this.dataService.sendGraphPutRequest(this.graphEndpoint, this.props.graph, teamSettings);
 
-                    // update the result object
                     if (updatedTeamInfo) {
-                        console.log(constants.infoLogPrefix + "Incident Team created");
+                        console.log(constants.infoLogPrefix + "Incident Team created on attempt " + attempt);
                         isTeamCreated = true;
                         result.data = updatedTeamInfo;
                         result.status = true;
+                        break;
                     }
                 } catch (updationError: any) {
-                    console.log(constants.infoLogPrefix + "Incident Team creation failed");
+                    console.log(constants.infoLogPrefix + "Incident Team creation failed, attempt " + attempt + "/" + MAX_ATTEMPTS);
                     console.error(
                         constants.errorLogPrefix + "CreateIncident_CreateTeam \n",
                         JSON.stringify(updationError)
                     );
-                    // Log Exception
                     this.dataService.trackException(this.props.appInsights, updationError, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_CreateTeam', this.props.userPrincipalName);
+
                     if (updationError.statusCode === 409 && updationError.message === "Team already exists") {
                         isTeamCreated = true;
                         this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
-                        result.data = await this.dataService.getGraphData(this.graphEndpoint, this.props.graph)
+                        result.data = await this.dataService.getGraphData(this.graphEndpoint, this.props.graph);
+                        result.status = true;
+                        break;
+                    }
+
+                    if (attempt < MAX_ATTEMPTS) {
+                        // Exponential backoff: 5s, 10s, 20s, 40s
+                        await this.timeOut(5000 * Math.pow(2, attempt - 1));
                     }
                 }
-                maxTeamCreationAttempt--;
-                await this.timeOut(5000);
             }
-            console.log(constants.infoLogPrefix + "createTeam_No Of Attempt", (15 - maxTeamCreationAttempt), result);
+            console.log(constants.infoLogPrefix + "createTeam result", result);
             resolve(result);
         });
     }
@@ -3407,8 +3402,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 });
             }
             else {
-                Object.values(constants.defaultChannelConstants).forEach((channel: string) => {
-                    res.push({ "displayName": channel })
+                constants.defaultChannelConstants.forEach((channel) => {
+                    const entry: ITeamChannel = { displayName: channel.displayName };
+                    if (channel.isFavoriteByDefault) entry.isFavoriteByDefault = true;
+                    res.push(entry);
                 });
             }
             return res;
@@ -4680,51 +4677,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 </Col>
                             </Row>
                             <Row xs={1} sm={2} md={3}>
-                                <Col md={4} sm={8} xs={12}>
-                                    <div className="incident-grid-item">
-                                        <label className="severity-label">{this.props.localeStrings.fieldSeverity}</label>
-                                        <div className="slider_labels">
-                                            {constants.severity.map((item, index) => {
-                                                return (
-                                                    <div
-                                                        className={index === this.state.selectedSeverity ? "slider_labels-label bold" : "slider_labels-label"}
-                                                        key={index}
-                                                    >
-                                                        {item}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        <ReactSlider
-                                            className="horizontal-slider"
-                                            marks
-                                            markClassName="example-mark"
-                                            min={0}
-                                            max={3}
-                                            value={this.state.selectedSeverity}
-                                            ariaLabel={this.props.localeStrings.fieldSeverity + constants.severity[this.state.selectedSeverity]}
-                                            thumbActiveClassName="focus-indicator"
-                                            trackClassName="example-track"
-                                            onChange={(index) => this.setState({
-                                                selectedSeverity: index
-                                            })}
-                                            renderMark={(props: any) => {
-                                                if (props.key < this.state.selectedSeverity) {
-                                                    props.className = "example-mark example-mark-completed";
-                                                    props.tabIndex = -1
-                                                } else if (props.key > this.state.selectedSeverity) {
-                                                    props.className = "example-mark example-mark-active";
-                                                    props.tabIndex = -1
-                                                }
-                                                else if (props.key === this.state.selectedSeverity) {
-                                                    props.className = `example-mark ${constants.severity[props.key]}`;
-                                                    props.tabIndex = 0
-                                                }
-                                                return <span aria-label={props.key === this.state.selectedSeverity ? this.props.localeStrings.fieldSeverity + constants.severity[props.key] + constants.selectedAriaLabel : this.props.localeStrings.fieldSeverity + constants.severity[props.key]} {...props} />;
-                                            }}
-                                        />
-                                    </div>
-                                </Col>
                                 {this.props.isEditMode &&
                                     <Col md={8} sm={8} xs={12}>
                                         <div className="incident-grid-item">

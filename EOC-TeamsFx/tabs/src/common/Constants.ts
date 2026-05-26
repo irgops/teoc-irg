@@ -77,11 +77,22 @@ export const teamNameConfigConstants = {
     DontInclude: "Don't Include"
 }
 
-export const defaultChannelConstants = {
-    Logistics: "Logistics",
-    Planning: "Planning",
-    Recovery: "Recovery"
-};
+// IRG channel list (General is auto-created by Teams; Announcements is wired
+// separately with a News tab; Assessment is wired separately with a SP list)
+export const defaultChannelConstants: Array<{ displayName: string; isFavoriteByDefault?: boolean }> = [
+    { displayName: "Command",              isFavoriteByDefault: true  },
+    { displayName: "Situation / Intel"                               },
+    { displayName: "Operations",           isFavoriteByDefault: true  },
+    { displayName: "Ground Ops"                                      },
+    { displayName: "Air Ops — Rotary"                           },
+    { displayName: "Air Ops — Fixed Wing"                       },
+    { displayName: "Medical"                                         },
+    { displayName: "Logistics"                                       },
+    { displayName: "Comms"                                           },
+    { displayName: "Plans"                                           },
+    { displayName: "Finance / Admin"                                 },
+    { displayName: "Recovery"                                        },
+];
 
 //Incident history constants
 export const itemHeight = 30;

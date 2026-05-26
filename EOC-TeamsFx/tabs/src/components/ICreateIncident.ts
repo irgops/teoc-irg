@@ -101,6 +101,7 @@ export interface ITeamChannel {
     displayName: string;
     membershipType?: string;
     members?: Array<any>;
+    isFavoriteByDefault?: boolean;
 }
 export interface ChannelCreationStatus {
     channelName: string;

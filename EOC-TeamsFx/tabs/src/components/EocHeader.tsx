@@ -116,21 +116,6 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                                         <Text block className="info-titlebody">
                                             {this.props.localeStrings.appDescription}
                                         </Text>
-                                        <h2><Text block as="h2" className="info-title">
-                                            {this.props.localeStrings.headerAdditionalResource}
-                                        </Text></h2>
-                                        <Text block as="span" className="info-titlebody">
-                                            {this.props.localeStrings.bodyAdditionalResource}
-                                        </Text>
-                                        <Link href={constants.msPublicSectorUrl} target="_blank" inline className="info-link" onKeyDown={(event) => {
-                                            if (event.shiftKey && event.key === constants.tabKey)
-                                                this.toggleIsCalloutVisible()
-                                        }}>
-                                            {this.props.localeStrings.msPublicSector}
-                                        </Link>
-                                        <Link href={constants.drivingAdoptionUrl} target="_blank" inline className="info-link">
-                                            {this.props.localeStrings.drivingAdoption}
-                                        </Link>
                                         <Text block as="span" className="info-title">
                                             ----
                                         </Text>
