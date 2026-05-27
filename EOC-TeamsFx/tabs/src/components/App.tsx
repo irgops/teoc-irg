@@ -65,9 +65,16 @@ export default function App() {
         if (err.errorCode === "monitor_window_timeout" || err.errorCode === "interaction_required") {
           console.warn("NAA ssoSilent Layer 1 failed (iOS WKWebView expected), falling to Layer 2", err.errorCode);
           try {
+            // SilentRequest has no loginHint — resolve the account from cache first.
+            const account = teamsLoginHint
+              ? (msal.getAccountByUsername(teamsLoginHint) ?? msal.getAllAccounts()[0])
+              : msal.getAllAccounts()[0];
+            if (!account) {
+              throw new Error("NAA Layer 2: no account in MSAL cache for acquireTokenSilent");
+            }
             authResult = await msal.acquireTokenSilent({
               scopes: authScopes,
-              loginHint: teamsLoginHint,
+              account,
             });
           } catch (silentErr: any) {
             console.error("NAA Layer 2 acquireTokenSilent failed, falling to Layer 3 popup", {
