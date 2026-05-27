@@ -1,5 +1,7 @@
 import { Loader, Provider, ThemeInput, teamsTheme } from "@fluentui/react-northstar";
 import { PublicClientApplication, Configuration } from "@azure/msal-browser";
+import { ApplicationInsights } from "@microsoft/applicationinsights-web";
+import { SeverityLevel } from "@microsoft/applicationinsights-common";
 import * as microsoftTeams from "@microsoft/teams-js";
 import { useState, useEffect } from "react";
 import { unstable_batchedUpdates } from "react-dom";
@@ -30,6 +32,13 @@ export default function App() {
         },
       };
 
+      const appInsights = new ApplicationInsights({
+        config: {
+          instrumentationKey: process.env.REACT_APP_APPINSIGHTS_INSTRUMENTATIONKEY || ""
+        }
+      });
+      appInsights.loadAppInsights();
+
       const msal = new PublicClientApplication(config);
       await msal.initialize();
 
@@ -41,8 +50,24 @@ export default function App() {
           scopes: ["openid", "profile"],
         });
         msal.setActiveAccount(result.account);
-      } catch (ssoError) {
-        console.warn("NAA ssoSilent failed, falling back to getAllAccounts()", ssoError);
+      } catch (ssoError: any) {
+        console.error("NAA ssoSilent failed", {
+          errorCode: ssoError?.errorCode,
+          errorMessage: ssoError?.errorMessage,
+          subError: ssoError?.subError,
+          name: ssoError?.name,
+          loginHint: ctx.user?.userPrincipalName,
+        }, ssoError);
+        appInsights.trackException(
+          { exception: ssoError, severityLevel: SeverityLevel.Error },
+          {
+            Component: "App",
+            Method: "ssoSilent",
+            User: ctx.user?.userPrincipalName,
+            ErrorCode: ssoError?.errorCode,
+            SubError: ssoError?.subError,
+          }
+        );
         const accounts = msal.getAllAccounts();
         if (accounts.length > 0) {
           msal.setActiveAccount(accounts[0]);
