@@ -85,6 +85,7 @@ interface IEOCHomeState {
 
 interface IEOCHomeProps {
     msalInstance: IPublicClientApplication;
+    loginHint?: string;
 }
 
 let localeStrings = new LocalizedStrings(localizedStrings);
@@ -92,6 +93,7 @@ let localeStrings = new LocalizedStrings(localizedStrings);
 
 export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState> {
     private msalInstance: IPublicClientApplication = this.props.msalInstance;
+    private loginHint: string | undefined = this.props.loginHint;
     private scope = graphConfig.scope;
     private dataService = new CommonService();
     private successMessagebarRef: React.RefObject<HTMLDivElement>;
@@ -245,6 +247,24 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
         return Client.initWithMiddleware({ authProvider, baseUrl: graphBaseURL });
     }
 
+    // Ensures an active account is set before any acquireTokenSilent call.
+    // App.tsx sets the active account during init, but if that is lost (e.g.
+    // due to a page refresh while MSAL cache is still warm), this restores it
+    // from the cache rather than letting MSAL throw no_account_error.
+    private ensureActiveAccount(): void {
+        if (!this.msalInstance.getActiveAccount()) {
+            const accounts = this.msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+                this.msalInstance.setActiveAccount(accounts[0]);
+            } else {
+                throw new Error(
+                    constants.errorLogPrefix +
+                    "NAA_NoAccountAvailable — MSAL cache is empty; user may need to re-authenticate"
+                );
+            }
+        }
+    }
+
     //method to perform actions based on state changes
     componentDidUpdate(_prevProps: Readonly<IEOCHomeProps>, prevState: Readonly<IEOCHomeState>): void {
         if (prevState.showSuccessMessageBar !== this.state.showSuccessMessageBar && this.state.showSuccessMessageBar) {
@@ -299,6 +319,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
     // this method connects with service layer to get the tenant name and SharePoint site Id
     public async getTenantAndSiteDetails() {
         try {
+            this.ensureActiveAccount();
             // get the tenant name
             const rootSite = await this.dataService.getTenantDetails(graphConfig.rootSiteGraphEndpoint, this.state.graph);
 
@@ -348,7 +369,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
     // this method connects with service layer to get the current user details
     public async getCurrentUserDetails() {
         try {
-            // get the tenant name
+            this.ensureActiveAccount();
             const currentUser = await this.dataService.getGraphData(graphConfig.meGraphEndpoint, this.state.graph);
 
             this.setState({
@@ -438,6 +459,7 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
     //Check if user's role is Admin in user roles list
     private checkUserRoleIsAdmin = async () => {
         try {
+            this.ensureActiveAccount();
             let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.state.siteId}/lists/${siteConfig.userRolesList}/items?$expand=fields($select=Title,Role)`;
 
             const usersData = await this.dataService.getGraphData(graphEndpoint, this.state.graph);

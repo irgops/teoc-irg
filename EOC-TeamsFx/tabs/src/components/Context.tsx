@@ -6,8 +6,10 @@ export const TeamsFxContext = createContext<{
   theme?: ThemePrepared;
   themeString: string;
   msalInstance?: IPublicClientApplication;
+  loginHint?: string;
 }>({
   theme: undefined,
   themeString: "",
   msalInstance: undefined,
+  loginHint: undefined,
 });
