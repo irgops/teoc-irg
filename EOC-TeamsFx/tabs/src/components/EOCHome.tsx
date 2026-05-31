@@ -278,7 +278,8 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
                     });
                 })
             },
-            baseUrl: '/api/graph'
+            baseUrl: `${window.location.origin}/api/graph`,
+            customHosts: new Set([window.location.hostname])
         });
     }
 
