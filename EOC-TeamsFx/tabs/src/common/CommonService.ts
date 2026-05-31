@@ -735,11 +735,11 @@ export default class CommonService {
         graphContextURL: string, appSettings: any) {
         try {
             //Get TEOC app id from Teams app catalog
-            const teocAppId = await this.getGraphData(graphContextURL + graphConfig.appCatalogsTEOCAppEndpoint, graph);
+            const teocAppId = await this.getGraphData(graphConfig.appCatalogsTEOCAppEndpoint, graph);
             const teocAppDataBindUrl = `${graphContextURL}${graphConfig.teamsAppsEndpoint}/${teocAppId.value[0].id}`;
 
             //Install TEOC App to Incident Team
-            const installAppEndpoint = `${graphContextURL}${graphConfig.teamsGraphEndpoint}/${group_id}${graphConfig.installedAppsEndpoint}`;
+            const installAppEndpoint = `${graphConfig.teamsGraphEndpoint}/${group_id}${graphConfig.installedAppsEndpoint}`;
             const installAppBody = { "teamsApp@odata.bind": teocAppDataBindUrl };
             await this.sendGraphPostRequest(installAppEndpoint, graph, installAppBody);
 

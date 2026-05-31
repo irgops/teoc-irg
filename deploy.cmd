@@ -91,8 +91,26 @@ call :ExecuteCmd npm run-script build
 popd
 IF !ERRORLEVEL! NEQ 0 goto error
 
-:: 3. KuduSync :: Build and publish
-call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 -f "%DEPLOYMENT_SOURCE%\EOC-TeamsFx\tabs\build" -t "%DEPLOYMENT_TARGET%" -n "%NEXT_MANIFEST_PATH%" -p "%PREVIOUS_MANIFEST_PATH%" -i ".git;.hg;.deployment;deploy.cmd"
+:: 3. KuduSync :: Sync React build into build\ so server.js path references are correct
+call :ExecuteCmd "%KUDU_SYNC_CMD%" -v 50 -f "%DEPLOYMENT_SOURCE%\EOC-TeamsFx\tabs\build" -t "%DEPLOYMENT_TARGET%\build" -n "%NEXT_MANIFEST_PATH%" -p "%PREVIOUS_MANIFEST_PATH%" -i ".git;.hg;.deployment;deploy.cmd"
+IF !ERRORLEVEL! NEQ 0 goto error
+
+:: 3b. IIS requires web.config at wwwroot root; KuduSync placed it inside build\
+call :ExecuteCmd copy "%DEPLOYMENT_TARGET%\build\web.config" "%DEPLOYMENT_TARGET%\web.config"
+IF !ERRORLEVEL! NEQ 0 goto error
+
+:: 4. Copy server entry point alongside the build output
+call :ExecuteCmd copy "%DEPLOYMENT_SOURCE%\EOC-TeamsFx\tabs\server.js" "%DEPLOYMENT_TARGET%\server.js"
+IF !ERRORLEVEL! NEQ 0 goto error
+
+:: 5. Copy package.json so npm can install server-side dependencies
+call :ExecuteCmd copy "%DEPLOYMENT_SOURCE%\EOC-TeamsFx\tabs\package.json" "%DEPLOYMENT_TARGET%\package.json"
+IF !ERRORLEVEL! NEQ 0 goto error
+
+:: 6. Install production dependencies in the deployment target
+pushd "%DEPLOYMENT_TARGET%"
+call :ExecuteCmd npm install --omit=dev --no-audit
+popd
 IF !ERRORLEVEL! NEQ 0 goto error
 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
