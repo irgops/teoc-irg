@@ -412,7 +412,11 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
             let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.state.siteId}/lists/${siteConfig.configurationList}/items?$expand=fields&$Top=5000`;
             const configDataRecords = [constants.enableRoles, constants.azureMapsKey, constants.appTitleKey,  constants.editIncidentAccessRoleKey];
             const configData = await this.dataService.getConfigData(graphEndpoint, this.state.graph, configDataRecords);
-            await this.checkUserRoleIsAdmin();
+            const rolesEnabledItem = configData.find((item: any) => item.title === constants.enableRoles);
+            const rolesEnabled = rolesEnabledItem?.value === "True";
+            if (rolesEnabled) {
+                await this.checkUserRoleIsAdmin();
+            }
             const appTitleItem = configData.filter((item: any) => item.title === constants.appTitleKey);
             const azureMapItem = configData.filter((item: any) => item.title === constants.azureMapsKey);
             const editIncidentAccessRole = configData.filter((item: any) => item.title === constants.editIncidentAccessRoleKey);
@@ -437,8 +441,8 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
             }
 
             this.setState({
-                isRolesEnabled: configData[0].value === "True",
-                configRoleData: configData[0],
+                isRolesEnabled: rolesEnabled,
+                configRoleData: rolesEnabledItem ?? {},
                 settingsLoader: false
             });
         }
