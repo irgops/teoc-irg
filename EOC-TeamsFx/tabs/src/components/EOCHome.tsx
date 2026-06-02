@@ -5,7 +5,7 @@ import loadable from "@loadable/component";
 import { ApplicationInsights } from "@microsoft/applicationinsights-web";
 import { Graph, Providers, ProviderState } from "@microsoft/mgt-element";
 import { SimpleProvider } from "@microsoft/mgt-react";
-import { Client } from "@microsoft/microsoft-graph-client";
+import { Client, Context, HTTPMessageHandler, Middleware, RedirectHandler, RedirectHandlerOptions, RetryHandler, RetryHandlerOptions } from "@microsoft/microsoft-graph-client";
 import * as microsoftTeams from "@microsoft/teams-js";
 import "bootstrap/dist/css/bootstrap.min.css";
 import React from "react";
@@ -90,6 +90,22 @@ interface IEOCHomeProps {
 
 let localeStrings = new LocalizedStrings(localizedStrings);
 
+class SSOAuthMiddleware implements Middleware {
+    private next!: Middleware;
+    setNext(next: Middleware) { this.next = next; }
+    async execute(context: Context): Promise<void> {
+        const token = await new Promise<string>((resolve, reject) => {
+            microsoftTeams.authentication.getAuthToken({
+                successCallback: resolve,
+                failureCallback: (err) => reject(new Error(err))
+            });
+        });
+        const headers = new Headers((context.options as RequestInit).headers as HeadersInit);
+        headers.set("Authorization", `Bearer ${token}`);
+        (context.options as RequestInit).headers = headers;
+        return this.next.execute(context);
+    }
+}
 
 export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState> {
     private dataService = new CommonService();
@@ -270,16 +286,13 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
     }
     createMicrosoftGraphClient() {
         return Client.initWithMiddleware({
-            authProvider: {
-                getAccessToken: () => new Promise<string>((resolve, reject) => {
-                    microsoftTeams.authentication.getAuthToken({
-                        successCallback: resolve,
-                        failureCallback: (err) => reject(new Error(err))
-                    });
-                })
-            },
-            baseUrl: `${window.location.origin}/api/graph`,
-            customHosts: new Set([window.location.hostname])
+            middleware: [
+                new SSOAuthMiddleware(),
+                new RetryHandler(new RetryHandlerOptions()),
+                new RedirectHandler(new RedirectHandlerOptions()),
+                new HTTPMessageHandler()
+            ],
+            baseUrl: '/api/graph'
         });
     }
 
