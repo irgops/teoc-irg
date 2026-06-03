@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
 const axios = require('axios');
-const { OnBehalfOfCredential } = require('@azure/identity');
+const { OnBehalfOfCredential, ClientSecretCredential } = require('@azure/identity');
 
 const app = express();
 const PORT = process.env.PORT || 3978;
@@ -18,6 +18,41 @@ setInterval(() => {
         if (entry.expiry <= now) oboCache.delete(key);
     }
 }, CACHE_TTL_MS).unref();
+
+// App-only config cache — sharePointRootUrl and siteId are static; populated once at startup
+const configCache = { sharePointRootUrl: null, siteId: null };
+let _appOnlyCredential = null;
+
+function getAppOnlyCredential() {
+    if (!_appOnlyCredential) {
+        _appOnlyCredential = new ClientSecretCredential(
+            process.env.M365_TENANT_ID,
+            process.env.M365_CLIENT_ID,
+            process.env.M365_CLIENT_SECRET
+        );
+    }
+    return _appOnlyCredential;
+}
+
+async function populateConfigCache() {
+    const tokenResponse = await getAppOnlyCredential().getToken('https://graph.microsoft.com/.default');
+    if (!tokenResponse) throw new Error('App-only token returned null');
+    const headers = { Authorization: `Bearer ${tokenResponse.token}` };
+
+    const rootRes = await axios.get('https://graph.microsoft.com/v1.0/sites/root', { headers });
+    const tenantHostname = rootRes.data.siteCollection.hostname;
+
+    const siteRes = await axios.get(
+        `https://graph.microsoft.com/v1.0/sites/${tenantHostname}:/sites/IRGEOC?$select=id`,
+        { headers }
+    );
+    configCache.sharePointRootUrl = rootRes.data.webUrl;
+    configCache.siteId = siteRes.data.id;
+    console.log('[config] Config cache populated');
+}
+
+// Non-fatal at startup — retried on first request to /api/config/tenant
+populateConfigCache().catch(err => console.error('[config] Startup cache warm failed:', err.message));
 
 app.use(express.static(path.join(__dirname, 'build')));
 app.use('/api/graph', express.json());
@@ -79,6 +114,28 @@ app.post('/api/auth/refresh', async (req, res) => {
     } catch (err) {
         console.error('[proxy] /api/auth/refresh error:', err.message);
         res.sendStatus(500);
+    }
+});
+
+// Named config endpoint — returns only { sharePointRootUrl, siteId }, never raw SP payloads.
+// Validates the caller via OBO before returning. Not a generic app-only SP tunnel.
+app.get('/api/config/tenant', async (req, res) => {
+    const ssoToken = extractSsoToken(req);
+    if (!ssoToken) return res.status(401).json({ error: 'Missing Authorization header' });
+    try {
+        await resolveGraphToken(ssoToken); // validates caller identity; OBO token not used here
+    } catch (err) {
+        console.error('[config] OBO validation failed:', err.message);
+        return res.status(401).json({ error: 'Authentication failed' });
+    }
+    try {
+        if (!configCache.sharePointRootUrl || !configCache.siteId) {
+            await populateConfigCache();
+        }
+        res.json({ sharePointRootUrl: configCache.sharePointRootUrl, siteId: configCache.siteId });
+    } catch (err) {
+        console.error('[config] /api/config/tenant error:', err.message);
+        res.status(500).json({ error: 'Config fetch failed' });
     }
 });
 

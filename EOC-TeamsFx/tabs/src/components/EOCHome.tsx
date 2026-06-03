@@ -348,33 +348,32 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
         Providers.globalProvider.graph = new Graph(this.state.graph as any);
     }
 
-    // this method connects with service layer to get the tenant name and SharePoint site Id
+    // this method fetches tenant name and SharePoint site Id from the server-side config endpoint.
+    // The config endpoint uses app-only credentials so this works for all users regardless of
+    // SharePoint site membership.
     public async getTenantAndSiteDetails() {
         try {
-            // get the tenant name
-            const rootSite = await this.dataService.getTenantDetails(graphConfig.rootSiteGraphEndpoint, this.state.graph);
-
-            const tenantName = rootSite.siteCollection.hostname;
-
-            const graphContextURL = rootSite["@odata.context"].split("$")[0];
-
-            // Form the graph end point to get the SharePoint site Id
-            const urlForSiteId = graphConfig.spSiteGraphEndpoint + tenantName + ":/sites/" + siteName + "?$select=id";
-
-            // get SharePoint site Id
-            const siteDetails = await this.dataService.getGraphData(urlForSiteId, this.state.graph);
-
+            const ssoToken = await new Promise<string>((resolve, reject) => {
+                microsoftTeams.authentication.getAuthToken({
+                    successCallback: resolve,
+                    failureCallback: (err) => reject(new Error(err))
+                });
+            });
+            const res = await fetch('/api/config/tenant', {
+                headers: { Authorization: `Bearer ${ssoToken}` }
+            });
+            if (!res.ok) throw new Error(`Config endpoint returned ${res.status}`);
+            const { sharePointRootUrl, siteId } = await res.json();
             this.setState({
-                tenantName: tenantName,
-                graphContextURL: graphContextURL,
-                siteId: siteDetails.id
-            })
+                tenantName: new URL(sharePointRootUrl).hostname,
+                graphContextURL: 'https://graph.microsoft.com/v1.0/',
+                siteId
+            });
         } catch (error: any) {
             console.error(
                 constants.errorLogPrefix + "_EOCHome_GetTenantAndSiteDetails \n",
                 JSON.stringify(error)
             );
-            //log exception to AppInsights
             this.dataService.trackException(appInsights, error, constants.componentNames.EOCHomeComponent, 'GetTenantAndSiteDetails', this.state.userPrincipalName);
         }
     }
@@ -407,6 +406,11 @@ export default class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeStat
             this.setState({
                 settingsLoader: true
             });
+
+            if (!this.state.siteId) {
+                this.setState({ settingsLoader: false });
+                return;
+            }
 
             //graph endpoint to get data from TEOC-Config list
             let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.state.siteId}/lists/${siteConfig.configurationList}/items?$expand=fields&$Top=5000`;
